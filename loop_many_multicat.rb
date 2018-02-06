@@ -15,6 +15,7 @@ else
   if !files || files.length < 1
     puts "No files found in #{source}/"
   else
+    puts files
     port = port.to_i
     if (1024 > port)
       puts "Port must be > 1024"
@@ -31,8 +32,8 @@ else
         threads = []
         sorted.each_with_index do |file,i|
           threads << Thread.new do
-	    `/home/elemental/multicat-1.0/multicat -u -U #{file} #{ip}:#{port+i}`
- 	    #`/home/elemental/multicat-1.0/loop_multicat.rb #{file} #{ip}:#{port+i}`
+	    `multicat -u -U -X #{file} #{ip}:#{port+i}`
+ 	    #`loop_multicat.rb #{file} #{ip}:#{port+i}`
           end
         end
         threads.each {|t| t.join }

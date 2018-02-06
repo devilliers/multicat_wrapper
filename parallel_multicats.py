@@ -3,7 +3,7 @@ import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import List
 import time
-from itertools import chain
+# from itertools import chain
 
 
 # initialise with default values
@@ -59,7 +59,7 @@ def multicat_thread(multicat_values: List):
     try:
         # os.system(f'ingests -p {pcr_pid} {ts_file}')
         # os.system(
-        #     f'multicat -X -U {ts_file} {ip_addr_target}:{str(port_target)}')
+        #     f'multicat -u -U {ts_file} {ip_addr_target}:{str(port_target)}')
         print(f"""Using values:
     ts file = {parser.file}
     pcr pid = {parser.pid}

@@ -16,7 +16,7 @@ e_val = ARGV[3]
 b_val = ARGV[4]
 i_val = ARGV[5]
 
-cmd = "/home/elemental/multicat -x -U #{source_file} #{destination}" 
+cmd = "multicat -X -u -U #{source_file} #{destination}" 
 
 if (d_val != 'nil' && d_val != nil)
   cmd << " -D #{d_val}"

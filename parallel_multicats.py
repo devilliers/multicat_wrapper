@@ -1,9 +1,8 @@
 import argparse
 import os
-from concurrent.futures import ProcessPoolExecutor  # , as_completed
+from concurrent.futures import ProcessPoolExecutor
 from typing import List
 import time
-# from itertools import chain
 
 
 def first_ts_file():

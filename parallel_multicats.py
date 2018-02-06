@@ -26,7 +26,9 @@ parser.add_argument(
 parser.add_argument(
     '--ms', help='milliseconds to stagger launching each instance of multicat by', type=int, default=500)
 parser.add_argument(
-    '--flags', nargs='+', help='flags to pass to multicat (just use the letters themselves, without "-"); run ```$ multicat --help``` for info on flags',
+    '--flags', nargs='+',
+    help='''flags to pass to multicat (just use the letters themselves, without "-");
+    run ```$ multicat --help``` for info on flags''',
     default='u U', choices=[
         'X',
         'T',

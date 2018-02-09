@@ -86,6 +86,11 @@ parser.ms /= 1000
 
 
 def ingest_ts(pcr_pid: int, ts_file: str):
+    """Ingest only if ts
+    file hasn't already been ingested
+    :param pcr_pid: pcr pid of ts_file
+    :param ts_file: filename of ts file
+    """
     aux_file = parser.file[:parser.file.index('.')] + '.aux'
     print(f'aux file {aux_file}')
     if not glob.glob(aux_file):

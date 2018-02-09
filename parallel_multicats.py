@@ -29,7 +29,7 @@ parser.add_argument(
     '--flags', nargs='+',
     help='''flags to pass to multicat (just use the letters themselves, without "-");
     run ```$ multicat --help``` for info on flags''',
-    default='u U', choices=[
+    default='u U'.split(), choices=[
         'X',
         'T',
         'f',

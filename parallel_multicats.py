@@ -1,15 +1,25 @@
 import argparse
 import os
+import time
+import glob
+import itertools as it
 from concurrent.futures import ProcessPoolExecutor
 from typing import List
-import time
+
+
+def multiple_file_types(*patterns):
+    return it.chain.from_iterable(glob.iglob(pattern) for pattern in patterns)
 
 
 def first_ts_file():
     """ Finds the first .ts
         file in the current directory
     """
-    return next((f for f in os.listdir(os.getcwd()) if f.endswith('.ts'))) or 'no .ts files found'
+    try:
+        return next((filename for filename in multiple_file_types('*.ts', '*.mpg')))
+    except StopIteration:
+        raise FileNotFoundError(
+            'no transport stream files found in current directory')
 
 
 parser = argparse.ArgumentParser()
@@ -82,7 +92,7 @@ def multicat_thread(multicat_values: List):
     global port_target, TOTAL_THREADS
     thread_no, ts_file, pcr_pid, ip_addr_target, flags, ms = multicat_values
     try:
-        print('Ingesting .ts file...')
+        print('Ingesting ts file...')
         os.system(f'ingests -p {pcr_pid} {ts_file}')
         print('\n')
         print(f"""Thread no: {thread_no}

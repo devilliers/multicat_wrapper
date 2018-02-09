@@ -85,6 +85,16 @@ print(f"""Using values:
 parser.ms /= 1000
 
 
+def ingest_ts(pcr_pid: int, ts_file: str):
+    aux_file = parser.file[:parser.file.index('.')] + '.aux'
+    print(f'aux file {aux_file}')
+    if not glob.glob(aux_file):
+        print('Ingesting ts file...')
+        os.system(f'ingests -p {pcr_pid} {ts_file}')
+        print('\n')
+    return
+
+
 def multicat_thread(multicat_values: List):
     """ Run multicat in a process thread with above values
     :param details: 3-tuple of values to pass to multicat
@@ -92,9 +102,7 @@ def multicat_thread(multicat_values: List):
     global port_target, TOTAL_THREADS
     thread_no, ts_file, pcr_pid, ip_addr_target, flags, ms = multicat_values
     try:
-        print('Ingesting ts file...')
-        os.system(f'ingests -p {pcr_pid} {ts_file}')
-        print('\n')
+        ingest_ts(pcr_pid, ts_file)
         print(f"""Thread no: {thread_no}
 Using values:
     ts file = {ts_file}

@@ -22,10 +22,10 @@ def first_ts_file():
             'no transport stream files found in current directory')
 
 
-def str2bool(v):
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+def str2bool(v: str) -> bool:
+    if v.lower() in ('yes', 'true', 't', 'y', '1', 'True'):
         return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+    elif v.lower() in ('no', 'false', 'f', 'n', '0', 'False'):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
@@ -43,6 +43,7 @@ parser.add_argument(
 parser.add_argument(
     '--port', '-p', help='Starting target port number.', type=int, default=5000)
 parser.add_argument(
+
     '--ms', help='Milliseconds to stagger launching each instance of multicat by.', type=int, default=500)
 parser.add_argument('--incr_ip', type=str2bool, nargs='?',
                     const=True, default='n',
@@ -131,8 +132,8 @@ def multicat_thread(multicat_values: List):
     """ Run multicat in a process thread with above values
     :param details: 3-tuple of values to pass to multicat
     """
-    global port_target, ip_target, TOTAL_THREADS
-    thread_no, ts_file, pcr_pid, flags, ms = multicat_values
+    global TOTAL_THREADS
+    thread_no, ts_file, pcr_pid, ip_target, flags, ms, port_target = multicat_values
     try:
         ingest_ts(pcr_pid, ts_file)
         print(f"""Thread no: {thread_no}
@@ -156,13 +157,13 @@ with ProcessPoolExecutor(max_workers=TOTAL_THREADS) as pool:
     futures = []
     thread_no = TOTAL_THREADS
     while parser.threads > 0:
-        thread_no = TOTAL_THREADS - parser.threads
-        time.sleep(parser.ms)
-        futures.append(pool.submit(multicat_thread, [
-                       thread_no, parser.file, parser.pid, parser.flags, parser.ms]))
         if parser.incr_port:
             port_target += 1
         if parser.incr_ip:
             ip_target = increment_ip(ip_target)
+        thread_no = TOTAL_THREADS - parser.threads
+        time.sleep(parser.ms)
+        futures.append(pool.submit(multicat_thread, [
+                       thread_no, parser.file, parser.pid, ip_target, parser.flags, parser.ms, port_target]))
         parser.threads -= 1
         thread_no = TOTAL_THREADS

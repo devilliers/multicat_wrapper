@@ -161,7 +161,7 @@ with ProcessPoolExecutor(max_workers=TOTAL_THREADS) as pool:
             port_target += 1
         if parser.incr_ip:
             ip_target = increment_ip(ip_target)
-        thread_no = TOTAL_THREADS - parser.threads
+        thread_no = TOTAL_THREADS - parser.threads + 1
         time.sleep(parser.ms)
         futures.append(pool.submit(multicat_thread, [
                        thread_no, parser.file, parser.pid, ip_target, parser.flags, parser.ms, port_target]))

@@ -22,15 +22,6 @@ def first_ts_file():
             'no transport stream files found in current directory')
 
 
-def str2bool(v: str) -> bool:
-    if v.lower() in ('yes', 'true', 't', 'y', '1', 'True'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0', 'False'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', '-f', help='Name of transport stream file to use (defaults to first found in directory).',
                     default=first_ts_file())
@@ -45,14 +36,10 @@ parser.add_argument(
 parser.add_argument(
 
     '--ms', help='Milliseconds to stagger launching each instance of multicat by.', type=int, default=500)
-parser.add_argument('--incr_ip', type=str2bool, nargs='?',
-                    const=True, default='n',
-                    help='Set last number in target IPv4 address to increment with each thread.',
-                    choices=[True, False])
-parser.add_argument('--incr_port', type=str2bool, nargs='?',
-                    const=True, default='n',
-                    help='Set last number in target IPv4 address to increment with each thread.',
-                    choices=[True, False])
+parser.add_argument('--incr_ip', action='store_true',
+                    help='Set last number in target IPv4 address to increment with each thread.')
+parser.add_argument('--incr_port', action='store_true',
+                    help='Set last number in target IPv4 address to increment with each thread.')
 parser.add_argument(
     '--flags', nargs='+',
     help='''Flags to pass to multicat (just use the letters themselves, without "-");

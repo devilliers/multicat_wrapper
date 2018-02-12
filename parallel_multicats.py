@@ -67,9 +67,15 @@ parser.add_argument(
 
 parser = parser.parse_args()
 
-# make multicat flags into actual flags
+# process flags and add any necessary info;
+# done like this for easy addition of more flags
+flag_additions = {
+    '-T': f'-T {parser.file.replace(".ts", ".xml")}',
+}
 for i, flag in enumerate(parser.flags):
     parser.flags[i] = '-' + flag
+    for k, v in flag_additions.items():
+        parser.flags[i] = v
 
 # used in outputting info
 port_target = parser.port
@@ -86,7 +92,7 @@ print(f"""Using values:
     milliseconds stagger = {parser.ms}
     multicat flags = {parser.flags}\n""")
 
-# s --> ms
+# ms --> s
 parser.ms /= 1000
 
 
@@ -129,9 +135,10 @@ Using values:
     thread count = {TOTAL_THREADS}
     target ip address = {ip_target}
     initial port number = {port_target}
-    milliseconds stagger = {ms}
+    milliseconds stagger = {int(ms * 1000)}
     multicat flags = {flags}\n""")
-        print('Running multicat...')
+        print('Running multicat:\n\n\t',
+              f'multicat {" ".join(flags)} {ts_file} {ip_target}:{str(port_target)}\n')
         os.system(
             f'multicat {" ".join(flags)} {ts_file} {ip_target}:{str(port_target)}')
         print('\n')

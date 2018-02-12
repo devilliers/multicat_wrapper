@@ -34,7 +34,6 @@ parser.add_argument(
 parser.add_argument(
     '--port', '-p', help='Starting target port number.', type=int, default=5000)
 parser.add_argument(
-
     '--ms', help='Milliseconds to stagger launching each instance of multicat by.', type=int, default=500)
 parser.add_argument('--incr_ip', action='store_true',
                     help='Set last number in target IPv4 address to increment with each thread.')
@@ -140,6 +139,7 @@ Using values:
         print(str(e))
 
 
+# Generate threads with multicat
 with ProcessPoolExecutor(max_workers=TOTAL_THREADS) as pool:
     futures = []
     thread_no = TOTAL_THREADS

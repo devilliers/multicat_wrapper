@@ -75,7 +75,8 @@ flag_additions = {
 for i, flag in enumerate(parser.flags):
     parser.flags[i] = '-' + flag
     for k, v in flag_additions.items():
-        parser.flags[i] = v
+        if parser.flags[i] == k:
+            parser.flags[i] = v
 
 # used in outputting info
 port_target = parser.port

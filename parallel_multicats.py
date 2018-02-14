@@ -28,11 +28,11 @@ parser.add_argument('--file', '-f', help='Name of transport stream file to use (
 parser.add_argument('--pid', help='PCR PID of ts file.',
                     type=int, default=33)
 parser.add_argument(
-    '--threads', '-t', help='Thread count (instances of multicat).', default=10, type=int)
+    '--threads', '-t', help='Thread count (instances of multicat).', default=1, type=int)
 parser.add_argument(
     '--ip', '-i', help='Target IPv4 address (of encoder).', default='0.0.0.0')
 parser.add_argument(
-    '--port', '-p', help='Starting target port number.', type=int, default=5000)
+    '--port', '-p', help='Starting target port number.', type=int, default=5001)
 parser.add_argument(
     '--ms', help='Milliseconds to stagger launching each instance of multicat by.', type=int, default=500)
 parser.add_argument('--incr_ip', action='store_true',
@@ -83,15 +83,15 @@ port_target = parser.port
 ip_target = parser.ip
 TOTAL_THREADS = parser.threads
 
-# print out script config
-print(f"""Using values:
-    ts file = {parser.file}
-    pcr pid = {parser.pid}
-    thread count = {parser.threads}
-    target ip address = {parser.ip}
-    initial port number = {port_target}
-    milliseconds stagger = {parser.ms}
-    multicat flags = {parser.flags}\n""")
+# # print out script config
+# print(f"""Using values:
+#     ts file = {parser.file}
+#     pcr pid = {parser.pid}
+#     thread count = {parser.threads}
+#     target ip address = {parser.ip}
+#     initial port number = {port_target}
+#     milliseconds stagger = {parser.ms}
+#     multicat flags = {parser.flags}\n""")
 
 # ms --> s
 parser.ms /= 1000
@@ -152,13 +152,13 @@ with ProcessPoolExecutor(max_workers=TOTAL_THREADS) as pool:
     futures = []
     thread_no = TOTAL_THREADS
     while parser.threads > 0:
-        if parser.incr_port:
-            port_target += 1
-        if parser.incr_ip:
-            ip_target = increment_ip(ip_target)
         thread_no = TOTAL_THREADS - parser.threads + 1
         time.sleep(parser.ms)
         futures.append(pool.submit(multicat_thread, [
                        thread_no, parser.file, parser.pid, ip_target, parser.flags, parser.ms, port_target]))
+        if parser.incr_port:
+            port_target += 1
+        if parser.incr_ip:
+            ip_target = increment_ip(ip_target)
         parser.threads -= 1
         thread_no = TOTAL_THREADS

@@ -4,9 +4,18 @@ import argparse
 import os
 import time
 import glob
+import signal
 import itertools as it
 from concurrent.futures import ProcessPoolExecutor
 from typing import List
+
+
+def signal_handler(signal, frame):
+    global interrupted
+    interrupted = True
+
+
+signal.signal(signal.SIGINT, signal_handler)
 
 
 def multiple_file_types(*patterns):
@@ -51,6 +60,7 @@ parser.add_argument('--incr_ip', action='store_true',
                     help='Set last number in connect IPv4 address to increment with each thread spawned.')
 parser.add_argument('--incr_port', action='store_true',
                     help='Set connect port to increment with each thread spawned.')
+parser.add_argument('--loop', '-l', action='store_true')
 parser.add_argument('--RTP', type=str)
 parser.add_argument('--ttl', type=int)
 
@@ -60,10 +70,9 @@ parser.add_argument('--ttl', type=int)
 parser.add_argument(
     '--flags', nargs='+',
     help='''Flags to pass to multicat (just use the letters themselves, without "-");
-    run ```$ multicat --help``` for info on flags.''',
-    default='U', choices=['X', 'T', 'f', 'p', 'C', 'P', 's', 'n', 'k',
-                          'd', 'a', 'r', 'O', 'S', 'u', 'U', 'm', 'R', 'w',
-                          'u', 't'])
+    run ```$ multicat --help``` for info on flags.''', default=[], choices=['X', 'T', 'f', 'p', 'C', 'P', 's', 'n',
+                                                                            'k', 'd', 'a', 'r', 'O', 'S', 'u', 'U',
+                                                                            'm', 'R', 'w', ])
 
 parser = parser.parse_args()
 
@@ -130,6 +139,7 @@ def ingest_ts(pcr_pid: int, ts_file: str):
     :param pcr_pid: pcr pid of ts_file
     :param ts_file: filename of ts file
     """
+    print(ts_file)
     aux_file = parser.file[:parser.file.index('.')] + '.aux'
     if not glob.glob(aux_file):
         print('Ingesting ts file...')
@@ -138,12 +148,12 @@ def ingest_ts(pcr_pid: int, ts_file: str):
     return
 
 
-def build_execution_string() -> str:
+def build_execution_string(cip: str, cport: int, bip: str=None, bport: int=None) -> str:
     execution_string = f'multicat {" ".join(parser.flags)} {parser.file} ' + \
-        f'{parser.ip}:{str(parser.port)}'
+        f'{cip}:{str(cport)}'
     additions = {
-        parser.bip: f'@{parser.bip}',
-        parser.bport: f':{parser.bport}',
+        parser.bip: f'@{bip}',
+        parser.bport: f':{str(bport)}',
         # multicat_options: f'/{multicat_options}'
     }
     for element, string_addition in additions.items():
@@ -157,8 +167,9 @@ def multicat_thread(multicat_values: List):
     """ Run multicat in a process thread with above values
     :param details: 3-tuple of values to pass to multicat
     """
-    global TOTAL_THREADS, CONNECT_IP, CONNECT_PORT
-    thread_no, ts_file, pcr_pid, ms, flags = multicat_values
+    global TOTAL_THREADS, CONNECT_PORT, BIND_PORT
+    thread_no, ts_file, pcr_pid, ms, flags, \
+        cip, cport, bip, bport = multicat_values
     try:
         ingest_ts(pcr_pid, ts_file)
         print(f"""Thread no: {thread_no}
@@ -166,16 +177,27 @@ Using values:
     ts file = {ts_file}
     pcr pid = {pcr_pid}
     thread count = {TOTAL_THREADS}
-    connect ip address = {CONNECT_IP}
+    connect ip address = {cip}
     initial connect port = {CONNECT_PORT}
-    bind ip address = {BIND_IP}
+    bind ip address = {bip}
     initial bind port = {BIND_PORT}
     milliseconds stagger = {int(ms * 1000)}
     multicat flags = {flags}\n""")
         # <connect address>:<connect port>@<bind address>:<bind port>/<options>
         print('Running multicat:\n\n\t' +
-              build_execution_string())
-        os.system(build_execution_string())
+              build_execution_string(cip, cport, bip=bip, bport=bport))
+        if parser.loop:
+            # interrupted = False
+            while True:
+                os.system(build_execution_string(
+                    cip, cport, bip=bip, bport=bport))
+                # supposedly a fix to not being able to CTRL+C
+                # to exit, but doesn't seem to work...
+                # if interrupted:
+                #     print("Killing loop.")
+                #     break
+        else:
+            os.system(build_execution_string(cip, cport, bip, bport))
     except Exception as e:
         print(str(e))
 
@@ -188,7 +210,8 @@ with ProcessPoolExecutor(max_workers=TOTAL_THREADS) as pool:
         thread_no = TOTAL_THREADS - parser.threads + 1
         time.sleep(parser.ms)
         futures.append(pool.submit(multicat_thread, [
-                       thread_no, parser.file, parser.pid, parser.ms, parser.flags]))
+                       thread_no, parser.file, parser.pid, parser.ms, parser.flags,
+                       CONNECT_IP, CONNECT_PORT, BIND_IP, BIND_PORT]))
         if parser.incr_port:
             CONNECT_PORT += 1
         if parser.incr_ip:

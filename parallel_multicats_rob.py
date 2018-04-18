@@ -1,5 +1,3 @@
-#!usr/bin/env python3
-
 import argparse
 import os
 import time
@@ -24,13 +22,7 @@ def first_ts_file():
             'no transport stream files found in current directory')
 
 
-# TODO run indefinitely? --> look through MC docs, then google, then look in MC code
-# TODO add rest of MC flags?
-
-
 parser = argparse.ArgumentParser()
-
-# these are the flags for this script
 parser.add_argument('--file', '-f', help='Name of transport stream file to use (defaults to first found in directory).',
                     default=first_ts_file())
 parser.add_argument('--pid', help='PCR PID of ts file.',
@@ -38,66 +30,57 @@ parser.add_argument('--pid', help='PCR PID of ts file.',
 parser.add_argument(
     '--threads', '-t', help='Thread count (instances of multicat).', default=1, type=int)
 parser.add_argument(
-    '--ip', '-i', help='Connect IPv4 address (of encoder).', default='0.0.0.0')
+    '--ip', '-i', help='Target IPv4 address (of encoder).', default='0.0.0.0')
 parser.add_argument(
-    '--port', '-p', help='Starting connect port number.', type=int, default=5001)
-parser.add_argument(
-    '--bip', help='Bind IPv4 address (of encoder).', default='10.10.111.2')
-parser.add_argument(
-    '--bport', help='Starting bind port number.', type=int)
+    '--port', '-p', help='Starting target port number.', type=int, default=5001)
 parser.add_argument(
     '--ms', help='Milliseconds to stagger launching each instance of multicat by.', type=int, default=500)
 parser.add_argument('--incr_ip', action='store_true',
-                    help='Set last number in connect IPv4 address to increment with each thread spawned.')
+                    help='Set last number in target IPv4 address to increment with each thread.')
 parser.add_argument('--incr_port', action='store_true',
-                    help='Set connect port to increment with each thread spawned.')
-parser.add_argument('--RTP', type=str)
-parser.add_argument('--ttl', type=int)
-
-# these are the flags to pass to straight to Multicat, that would be used when
-# running Multicat without this wrapper script. Those that allow a variable to be
-# passed in are processed below.
+                    help='Set last number in target IPv4 address to increment with each thread.')
 parser.add_argument(
     '--flags', nargs='+',
     help='''Flags to pass to multicat (just use the letters themselves, without "-");
     run ```$ multicat --help``` for info on flags.''',
-    default='U', choices=['X', 'T', 'f', 'p', 'C', 'P', 's', 'n', 'k',
-                          'd', 'a', 'r', 'O', 'S', 'u', 'U', 'm', 'R', 'w',
-                          'u', 't'])
+    default='u U'.split(), choices=[
+        'X',
+        'T',
+        'f',
+        'p',
+        'C',
+        'P',
+        's',
+        'n',
+        'k',
+        'd',
+        'a',
+        'r',
+        'O',
+        'S',
+        'u',
+        'U',
+        'm',
+        'R',
+        'w',
+    ])
 
 parser = parser.parse_args()
 
-###### Start Multicat flag processing #########
-
-# if these are flags (like --ttl, for example) are used, the corresponding flags
-# need to be passed to Multicat
-flags_to_add_to_multicat = {
-    parser.ttl: 't',
-    parser.RTP: 'u'
-}
-for flag in flags_to_add_to_multicat:
-    if flag:
-        parser.flags.append(flags_to_add_to_multicat[flag])
-
-# pass any flag variables through to multicat flags that use them
-mc_flag_additions = {
+# process flags and add any necessary info;
+# done like this for easy addition of more flags
+flag_additions = {
     '-T': f'-T {parser.file.replace(".ts", ".xml")}',
-    '-t': f'-t {parser.ttl}',
-    '-u': f'-u {parser.RTP}'
 }
 for i, flag in enumerate(parser.flags):
     parser.flags[i] = '-' + flag
-    for k, v in mc_flag_additions.items():
+    for k, v in flag_additions.items():
         if parser.flags[i] == k:
             parser.flags[i] = v
 
-###### End of Multicat flag processing #########
-
 # used in outputting info
-CONNECT_IP = parser.ip
-CONNECT_PORT = parser.port
-BIND_IP = parser.bip
-BIND_PORT = parser.bport
+port_target = parser.port
+ip_target = parser.ip
 TOTAL_THREADS = parser.threads
 
 # # print out script config
@@ -106,7 +89,7 @@ TOTAL_THREADS = parser.threads
 #     pcr pid = {parser.pid}
 #     thread count = {parser.threads}
 #     target ip address = {parser.ip}
-#     initial port number = {CONNECT_PORT}
+#     initial port number = {port_target}
 #     milliseconds stagger = {parser.ms}
 #     multicat flags = {parser.flags}\n""")
 
@@ -138,27 +121,12 @@ def ingest_ts(pcr_pid: int, ts_file: str):
     return
 
 
-def build_execution_string() -> str:
-    execution_string = f'multicat {" ".join(parser.flags)} {parser.file} ' + \
-        f'{parser.ip}:{str(parser.port)}'
-    additions = {
-        parser.bip: f'@{parser.bip}',
-        parser.bport: f':{parser.bport}',
-        # multicat_options: f'/{multicat_options}'
-    }
-    for element, string_addition in additions.items():
-        if element is not None and element != '' and element != 0:
-            execution_string += string_addition
-    execution_string += '\n\n'
-    return execution_string
-
-
 def multicat_thread(multicat_values: List):
     """ Run multicat in a process thread with above values
     :param details: 3-tuple of values to pass to multicat
     """
-    global TOTAL_THREADS, CONNECT_IP, CONNECT_PORT
-    thread_no, ts_file, pcr_pid, ms, flags = multicat_values
+    global TOTAL_THREADS
+    thread_no, ts_file, pcr_pid, ip_target, flags, ms, port_target = multicat_values
     try:
         ingest_ts(pcr_pid, ts_file)
         print(f"""Thread no: {thread_no}
@@ -166,16 +134,15 @@ Using values:
     ts file = {ts_file}
     pcr pid = {pcr_pid}
     thread count = {TOTAL_THREADS}
-    connect ip address = {CONNECT_IP}
-    initial connect port = {CONNECT_PORT}
-    bind ip address = {BIND_IP}
-    initial bind port = {BIND_PORT}
+    target ip address = {ip_target}
+    initial port number = {port_target}
     milliseconds stagger = {int(ms * 1000)}
     multicat flags = {flags}\n""")
-        # <connect address>:<connect port>@<bind address>:<bind port>/<options>
-        print('Running multicat:\n\n\t' +
-              build_execution_string())
-        os.system(build_execution_string())
+        print('Running multicat:\n\n\t',
+              f'multicat -t 20 {" ".join(flags)} {ts_file} {ip_target}:{str(port_target)}@10.10.111.2\n')
+        os.system(
+            f'multicat -t 20 {" ".join(flags)} {ts_file} {ip_target}:{str(port_target)}@10.10.111.2')
+        print('\n')
     except Exception as e:
         print(str(e))
 
@@ -188,10 +155,10 @@ with ProcessPoolExecutor(max_workers=TOTAL_THREADS) as pool:
         thread_no = TOTAL_THREADS - parser.threads + 1
         time.sleep(parser.ms)
         futures.append(pool.submit(multicat_thread, [
-                       thread_no, parser.file, parser.pid, parser.ms, parser.flags]))
+                       thread_no, parser.file, parser.pid, ip_target, parser.flags, parser.ms, port_target]))
         if parser.incr_port:
-            CONNECT_PORT += 1
+            port_target += 1
         if parser.incr_ip:
-            CONNECT_IP = increment_ip(CONNECT_IP)
+            ip_target = increment_ip(ip_target)
         parser.threads -= 1
         thread_no = TOTAL_THREADS

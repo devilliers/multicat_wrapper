@@ -5,9 +5,13 @@ import os
 import time
 import glob
 import signal
+import sys
 import itertools as it
 from concurrent.futures import ProcessPoolExecutor
-from typing import List
+
+# PY2 = sys.version[0] == '2'
+# PY3_4 = sys.version[:3] == '3.4'
+# PY3_6 = sys.version[:3] == '3.6'
 
 
 def signal_handler(signal, frame):
@@ -31,10 +35,6 @@ def first_ts_file():
     except StopIteration:
         raise FileNotFoundError(
             'no transport stream files found in current directory')
-
-
-# TODO run indefinitely? --> look through MC docs, then google, then look in MC code
-# TODO add rest of MC flags?
 
 
 parser = argparse.ArgumentParser()
@@ -89,10 +89,11 @@ for flag in flags_to_add_to_multicat:
         parser.flags.append(flags_to_add_to_multicat[flag])
 
 # pass any flag variables through to multicat flags that use them
+
 mc_flag_additions = {
-    '-T': f'-T {parser.file.replace(".ts", ".xml")}',
-    '-t': f'-t {parser.ttl}',
-    '-u': f'-u {parser.RTP}'
+    '-T': '-T {xml_output}'.format(xml_output=parser.file.replace(".ts", ".xml")),
+    '-t': '-t {ttl}'.format(ttl=parser.ttl),
+    '-u': '-u {rtp}'.format(rtp=parser.RTP),
 }
 for i, flag in enumerate(parser.flags):
     parser.flags[i] = '-' + flag
@@ -108,16 +109,6 @@ CONNECT_PORT = parser.port
 BIND_IP = parser.bip
 BIND_PORT = parser.bport
 TOTAL_THREADS = parser.threads
-
-# # print out script config
-# print(f"""Using values:
-#     ts file = {parser.file}
-#     pcr pid = {parser.pid}
-#     thread count = {parser.threads}
-#     target ip address = {parser.ip}
-#     initial port number = {CONNECT_PORT}
-#     milliseconds stagger = {parser.ms}
-#     multicat flags = {parser.flags}\n""")
 
 # ms --> s
 parser.ms /= 1000
@@ -143,18 +134,20 @@ def ingest_ts(pcr_pid: int, ts_file: str):
     aux_file = parser.file[:parser.file.index('.')] + '.aux'
     if not glob.glob(aux_file):
         print('Ingesting ts file...')
-        os.system(f'ingests -p {pcr_pid} {ts_file}')
+        os.system(
+            'ingests -p {pcr_pid} {ts_file}'.format(pcr_pid=pcr_pid, ts_file=ts_file))
         print('\n')
     return
 
 
 def build_execution_string(cip: str, cport: int, bip: str=None, bport: int=None) -> str:
-    execution_string = f'multicat {" ".join(parser.flags)} {parser.file} ' + \
-        f'{cip}:{str(cport)}'
+    flags = " ".join(parser.flags)
+    execution_string = 'multicat {flags} {fl} '.format(flags=flags, fl=parser.file) + \
+        '{cip}:{cport}'.format(cip=cip, cport=str(cport))
     additions = {
-        parser.bip: f'@{bip}',
-        parser.bport: f':{str(bport)}',
-        # multicat_options: f'/{multicat_options}'
+        parser.bip: '@{bip}'.format(bip=bip),
+        parser.bport: ':{bport}'.format(bport=str(bport)),
+        # multicat_options: '/{multicat_options}'.format(multicat_options=multicat_options)
     }
     for element, string_addition in additions.items():
         if element is not None and element != '' and element != 0:
@@ -163,7 +156,7 @@ def build_execution_string(cip: str, cport: int, bip: str=None, bport: int=None)
     return execution_string
 
 
-def multicat_thread(multicat_values: List):
+def multicat_thread(multicat_values: list):
     """ Run multicat in a process thread with above values
     :param details: 3-tuple of values to pass to multicat
     """
@@ -172,17 +165,18 @@ def multicat_thread(multicat_values: List):
         cip, cport, bip, bport = multicat_values
     try:
         ingest_ts(pcr_pid, ts_file)
-        print(f"""Thread no: {thread_no}
-Using values:
-    ts file = {ts_file}
-    pcr pid = {pcr_pid}
-    thread count = {TOTAL_THREADS}
-    connect ip address = {cip}
-    initial connect port = {CONNECT_PORT}
-    bind ip address = {bip}
-    initial bind port = {BIND_PORT}
-    milliseconds stagger = {int(ms * 1000)}
-    multicat flags = {flags}\n""")
+        output_str = 'Thread no: {}'.format(thread_no)
+        output_str += '\nUsing values:'
+        output_str += '\n\tts file = {}'.format(ts_file)
+        output_str += '\n\tpcr pid = {}'.format(pcr_pid)
+        output_str += '\n\tthread count = {}'.format(TOTAL_THREADS)
+        output_str += '\n\tconnect ip address = {}'.format(cip)
+        output_str += '\n\tinitial connect port = {}'.format(CONNECT_PORT)
+        output_str += '\n\tbind ip address = {}'.format(bip)
+        output_str += '\n\tinitial bind port = {}'.format(BIND_PORT)
+        output_str += '\n\tmilliseconds stagger = {}'.format(int(ms * 1000))
+        output_str += '\n\tmulticat flags = {}\n'.format(flags)
+        print(output_str)
         # <connect address>:<connect port>@<bind address>:<bind port>/<options>
         print('Running multicat:\n\n\t' +
               build_execution_string(cip, cport, bip=bip, bport=bport))

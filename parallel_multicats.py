@@ -1,13 +1,13 @@
 #!usr/bin/env python3
 
 import argparse
-import os
+# import os
 import time
 import glob
 import signal
-import sys
 import itertools as it
 from concurrent.futures import ProcessPoolExecutor
+from subprocess import Popen
 
 # PY2 = sys.version[0] == '2'
 # PY3_4 = sys.version[:3] == '3.4'
@@ -51,7 +51,7 @@ parser.add_argument(
 parser.add_argument(
     '--port', '-p', help='Starting connect port number.', type=int, default=5001)
 parser.add_argument(
-    '--bip', help='Bind IPv4 address (of encoder).', default='10.10.111.2')
+    '--bip', help='Bind IPv4 address (of encoder).')
 parser.add_argument(
     '--bport', help='Starting bind port number.', type=int)
 parser.add_argument(
@@ -134,16 +134,15 @@ def ingest_ts(pcr_pid: int, ts_file: str):
     aux_file = parser.file[:parser.file.index('.')] + '.aux'
     if not glob.glob(aux_file):
         print('Ingesting ts file...')
-        os.system(
-            'ingests -p {pcr_pid} {ts_file}'.format(pcr_pid=pcr_pid, ts_file=ts_file))
+        Popen(['ingests', '-p', str(pcr_pid), ts_file])
         print('\n')
     return
 
 
 def build_execution_string(cip: str, cport: int, bip: str=None, bport: int=None) -> str:
     flags = " ".join(parser.flags)
-    execution_string = 'multicat {flags} {fl} '.format(flags=flags, fl=parser.file) + \
-        '{cip}:{cport}'.format(cip=cip, cport=str(cport))
+    execution_string = 'multicat {flags} {fl} '.format(
+        flags=flags, fl=parser.file) + '{cip}:{cport}'.format(cip=cip, cport=str(cport))
     additions = {
         parser.bip: '@{bip}'.format(bip=bip),
         parser.bport: ':{bport}'.format(bport=str(bport)),
@@ -154,6 +153,23 @@ def build_execution_string(cip: str, cport: int, bip: str=None, bport: int=None)
             execution_string += string_addition
     execution_string += '\n\n'
     return execution_string
+
+
+def build_execution_args(cip: str, cport: int, bip: str=None, bport: int=None) -> list:
+    execution_args = ['multicat']
+    for flag in parser.flags:
+        execution_args.append(flag)
+    execution_args.append(parser.flag)
+    execution_args.append('{cip}:{cport}'.format(cip=cip, cport=str(cport)))
+    additions = {
+        parser.bip: '@{bip}'.format(bip=bip),
+        parser.bport: ':{bport}'.format(bport=str(bport)),
+        # multicat_options: '/{multicat_options}'.format(multicat_options=multicat_options)
+    }
+    for element, string_addition in additions.items():
+        if element is not None and element != '' and element != 0:
+            execution_args.append(string_addition)
+    return execution_args
 
 
 def multicat_thread(multicat_values: list):
@@ -183,7 +199,7 @@ def multicat_thread(multicat_values: list):
         if parser.loop:
             # interrupted = False
             while True:
-                os.system(build_execution_string(
+                Popen(build_execution_args(
                     cip, cport, bip=bip, bport=bport))
                 # supposedly a fix to not being able to CTRL+C
                 # to exit, but doesn't seem to work...
@@ -191,7 +207,7 @@ def multicat_thread(multicat_values: list):
                 #     print("Killing loop.")
                 #     break
         else:
-            os.system(build_execution_string(cip, cport, bip, bport))
+            Popen(build_execution_args(cip, cport, bip=bip, bport=bport))
     except Exception as e:
         print(str(e))
 

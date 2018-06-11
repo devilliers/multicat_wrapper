@@ -41,9 +41,6 @@ def first_ts_file():
 
 
 class WFileList(list):
-    def __init__(self):
-        self._current = None
-
     def append(self, item):
         if not isinstance(tuple):
             raise TypeError(f'must be tuple')
@@ -114,8 +111,10 @@ if parser.manifest:
     mf = parser.manifest
     if not mf.endswith('.csv'):
         raise FileNotFoundError('manifest file must be in CSV format')
+    weighted_files = WFileList()
     with open(mf, 'rb') as csvfile:
-        weighted_files = [row for row in reader(csvfile)]
+        for row in reader(csvfile):
+            WFileList.append(tuple(row))
 
 ###### End of Manifest file processing #########
 

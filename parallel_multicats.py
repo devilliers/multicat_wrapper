@@ -8,6 +8,9 @@ import signal
 import sys
 import itertools as it
 from concurrent.futures import ProcessPoolExecutor
+from random import random
+from bisect import bisect
+from csv import reader
 
 # PY2 = sys.version[0] == '2'
 # PY3_4 = sys.version[:3] == '3.4'
@@ -37,11 +40,40 @@ def first_ts_file():
             'no transport stream files found in current directory')
 
 
-parser = argparse.ArgumentParser()
+class WFileList(list):
+    def __init__(self):
+        self._current = None
 
+    def append(self, item):
+        if not isinstance(tuple):
+            raise TypeError(f'must be tuple')
+        super.append(item)
+        return sorted(self)
+
+    def elect(self):
+        if len(self) == 0:
+            raise IndexError('no files')
+        values, weights = zip(*self)
+        total = 0
+        cum_weights = []
+        for w in weights:
+            total += w
+            cum_weights.append(total)
+        x = random() * total
+        i = bisect(cum_weights, x)
+        return values[i]
+
+    def __repr__(self):
+        return ''
+
+
+parser = argparse.ArgumentParser()
+group = parser.add_mutually_exclusive_group(required=True)
 # these are the flags for this script
-parser.add_argument('--file', '-f', help='Name of transport stream file to use (defaults to first found in directory).',
-                    default=first_ts_file())
+group.add_argument('--file', '-f', help='Name of transport stream file to use (defaults to first found in directory).',
+                   default=first_ts_file())
+group.add_argument('--manifest', '-m',
+                   help='Name of manifest file containing list of ts files and corresponding weights.')
 parser.add_argument('--pid', help='PCR PID of ts file.',
                     type=int, default=33)
 parser.add_argument(
@@ -75,6 +107,17 @@ parser.add_argument(
                                                                             'm', 'R', 'w', ])
 
 parser = parser.parse_args()
+
+###### Start Manifest file processing #########
+
+if parser.manifest:
+    mf = parser.manifest
+    if not mf.endswith('.csv'):
+        raise FileNotFoundError('manifest file must be in CSV format')
+    with open(mf, 'rb') as csvfile:
+        weighted_files = [row for row in reader(csvfile)]
+
+###### End of Manifest file processing #########
 
 ###### Start Multicat flag processing #########
 

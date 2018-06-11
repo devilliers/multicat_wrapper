@@ -14,12 +14,12 @@ from subprocess import Popen
 # PY3_6 = sys.version[:3] == '3.6'
 
 
-def signal_handler(signal, frame):
-    global interrupted
-    interrupted = True
+# def signal_handler(signal, frame):
+#     global interrupted
+#     interrupted = True
 
 
-signal.signal(signal.SIGINT, signal_handler)
+# signal.signal(signal.SIGINT, signal_handler)
 
 
 def multiple_file_types(*patterns):
@@ -130,10 +130,11 @@ def ingest_ts(pcr_pid: int, ts_file: str):
     :param pcr_pid: pcr pid of ts_file
     :param ts_file: filename of ts file
     """
-    print(ts_file)
     aux_file = parser.file[:parser.file.index('.')] + '.aux'
     if not glob.glob(aux_file):
-        print('Ingesting ts file...')
+        print('No corresponding .aux file found;\nIngesting ts file:\n')
+        print(
+            'ingests -p {pcr_pid} {ts_file}'.format(pcr_pid=str(pcr_pid), ts_file=ts_file))
         Popen(['ingests', '-p', str(pcr_pid), ts_file])
         print('\n')
     return
@@ -159,7 +160,7 @@ def build_execution_args(cip: str, cport: int, bip: str=None, bport: int=None) -
     execution_args = ['multicat']
     for flag in parser.flags:
         execution_args.append(flag)
-    execution_args.append(parser.flag)
+    execution_args.append(parser.file)
     execution_args.append('{cip}:{cport}'.format(cip=cip, cport=str(cport)))
     additions = {
         parser.bip: '@{bip}'.format(bip=bip),
@@ -174,7 +175,7 @@ def build_execution_args(cip: str, cport: int, bip: str=None, bport: int=None) -
 
 def multicat_thread(multicat_values: list):
     """ Run multicat in a process thread with above values
-    :param details: 3-tuple of values to pass to multicat
+    :param multicat_values: list of values to pass to multicat
     """
     global TOTAL_THREADS, CONNECT_PORT, BIND_PORT
     thread_no, ts_file, pcr_pid, ms, flags, \
@@ -182,7 +183,7 @@ def multicat_thread(multicat_values: list):
     try:
         ingest_ts(pcr_pid, ts_file)
         output_str = 'Thread no: {}'.format(thread_no)
-        output_str += '\nUsing values:'
+        output_str += '\nUsing values:\n'
         output_str += '\n\tts file = {}'.format(ts_file)
         output_str += '\n\tpcr pid = {}'.format(pcr_pid)
         output_str += '\n\tthread count = {}'.format(TOTAL_THREADS)

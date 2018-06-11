@@ -11,6 +11,7 @@ from concurrent.futures import ProcessPoolExecutor
 from random import random
 from bisect import bisect
 from csv import reader
+from collections import Counter
 
 # PY2 = sys.version[0] == '2'
 # PY3_4 = sys.version[:3] == '3.4'
@@ -27,6 +28,7 @@ def multiple_file_types(*patterns):
 
 
 def first_file(ftype):
+    # TODO: use this
     """ Finds the first file in the current directory
     of the specified type
     """
@@ -42,10 +44,13 @@ def first_file(ftype):
 
 
 class WFileList(list):
+    def __init__(self):
+        self.choices = Counter()
+
     def append(self, item):
-        if not isinstance(tuple):
+        if not isinstance(item, tuple):
             raise TypeError(f'must be tuple')
-        super.append(item)
+        super().append(item)
         return sorted(self)
 
     def elect(self):
@@ -55,10 +60,11 @@ class WFileList(list):
         total = 0
         cum_weights = []
         for w in weights:
-            total += w
+            total += int(w)
             cum_weights.append(total)
         x = random() * total
         i = bisect(cum_weights, x)
+        self.choices[values[i]] += 1
         return values[i]
 
     def __repr__(self):
@@ -81,8 +87,7 @@ def ingest_ts(pcr_pid: int, ts_file: str):
     :param pcr_pid: pcr pid of ts_file
     :param ts_file: filename of ts file
     """
-    print(ts_file)
-    aux_file = parser.file[:parser.file.index('.')] + '.aux'
+    aux_file = ts_file[:ts_file.index('.')] + '.aux'
     if not glob.glob(aux_file):
         print('Ingesting ts file...')
         os.system(
@@ -93,8 +98,8 @@ def ingest_ts(pcr_pid: int, ts_file: str):
 
 def build_execution_string(cip: str, cport: int, bip: str=None, bport: int=None) -> str:
     flags = " ".join(parser.flags)
-    execution_string = 'multicat {flags} {fl} '.format(flags=flags, fl=parser.file) +
-        '{cip}:{cport}'.format(cip=cip, cport=str(cport))
+    execution_string = 'multicat {flags} {fl} '.format(
+        flags=flags, fl=parser.file) + '{cip}:{cport}'.format(cip=cip, cport=str(cport))
     additions = {
         parser.bip: '@{bip}'.format(bip=bip),
         parser.bport: ':{bport}'.format(bport=str(bport)),
@@ -111,12 +116,12 @@ def multicat_thread(multicat_values: list):
     """ Run multicat in a process thread with above values
     :param details: 3-tuple of values to pass to multicat
     """
-    global TOTAL_THREADS, CONNECT_PORT, BIND_PORT
     thread_no, ts_file, pcr_pid, ms, flags, \
         cip, cport, bip, bport = multicat_values
     try:
         ingest_ts(pcr_pid, ts_file)
-        output_str = 'Thread no: {}'.format(thread_no)
+        output_str = 'Thread no: {}'.format(
+            thread_no) if thread_no == 1 else '\nThread no: {}'.format(thread_no)
         output_str += '\nUsing values:'
         output_str += '\n\tts file = {}'.format(ts_file)
         output_str += '\n\tpcr pid = {}'.format(pcr_pid)
@@ -148,6 +153,7 @@ def multicat_thread(multicat_values: list):
 
 
 def main():
+    global parser
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
     # these are the flags for this script
@@ -198,7 +204,7 @@ def main():
         if not mf.endswith('.csv'):
             raise FileNotFoundError('manifest file must be in CSV format')
         weighted_files = WFileList()
-        with open(mf, 'rb') as csvfile:
+        with open(mf, 'r') as csvfile:
             for row in reader(csvfile):
                 weighted_files.append(tuple(row))
 
@@ -217,8 +223,10 @@ def main():
             parser.flags.append(flags_to_add_to_multicat[flag])
 
     # pass any flag variables through to multicat flags that use them
+    file_choice = weighted_files.elect() if parser.manifest else parser.file
     mc_flag_additions = {
-        '-T': '-T {xml_output}'.format(xml_output=parser.file.replace(".ts", ".xml")),
+        # TODO: this is wrong - need to have an xml output for each ts file, not the manifest
+        '-T': '-T {xml_output}'.format(xml_output=file_choice.replace(".ts", ".xml")),
         '-t': '-t {ttl}'.format(ttl=parser.ttl),
         '-u': '-u {rtp}'.format(rtp=parser.RTP),
     }
@@ -229,7 +237,7 @@ def main():
                 parser.flags[i] = v
 
     ###### End of Multicat flag processing #########
-
+    global TOTAL_THREADS, CONNECT_PORT, BIND_PORT
     # used in outputting info
     CONNECT_IP = parser.ip
     CONNECT_PORT = parser.port
@@ -258,6 +266,11 @@ def main():
                 CONNECT_IP = increment_ip(CONNECT_IP)
             parser.threads -= 1
             thread_no = TOTAL_THREADS
+
+    if TOTAL_THREADS > 1:
+        print('\n\nDistribution of file choices:\n')
+        for k, v in weighted_files.choices.items():
+            print('\t', k, 'was selected', v, 'times\n')
 
 
 if __name__ == '__main__':

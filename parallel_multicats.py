@@ -74,6 +74,27 @@ class WFileList(list):
         taking their weight into account.'
 
 
+def read_manifest(manifest_file: str):
+    """Read the manifest file of filenames and weights
+    and add to WFileList.
+    :param manifest_file: name of manifest CSV file
+    """
+    # TODO: add handling for bad file writing;
+    #   - formatting errors (space after comma breaks?)
+    #   - check all files stated in manifest are accessible
+    #   - (filename, weight), not (weight, filename) --> or, could sort each row when adding, by sorted(item, key=lambda item: type==str) or something like that -
+    # https://stackoverflow.com/questions/34756863/python-sort-different-types-in-list good place to start
+    # also https://www.peterbe.com/plog/in-python-you-sort-with-a-tuple
+    if not mf.endswith('.csv'):
+        raise FileNotFoundError('manifest file must be in CSV format')
+    weighted_files = WFileList()
+    with open(mf, 'r') as csvfile:
+        for row in reader(csvfile):
+            weighted_files.append(tuple(row))
+        csvfile.close()
+    return weighted_files
+
+
 def increment_ip(ip: str) -> str:
     """Increment the fourth num
     in in IPv4 addr
@@ -218,12 +239,7 @@ def main():
 
     if parser.manifest:
         mf = parser.manifest
-        if not mf.endswith('.csv'):
-            raise FileNotFoundError('manifest file must be in CSV format')
-        weighted_files = WFileList()
-        with open(mf, 'r') as csvfile:
-            for row in reader(csvfile):
-                weighted_files.append(tuple(row))
+        weighted_files = read_manifest(mf)
 
     ###### End of Manifest file processing #########
 

@@ -39,12 +39,23 @@ class WFileList(list):
         self.choices = Counter()
 
     def append(self, item):
+        """Overridden append that checks
+        for tuple type and sorts members.
+        :param item: object to add to list
+        """
         if not isinstance(item, tuple):
             raise TypeError(f'must be tuple')
         super().append(item)
         return sorted(self)
 
     def elect(self):
+        """Weighted elect of file based
+        on weight assigned in manifest file.
+        Uses bisect to assign probability regions
+        and a random integer choice, meaning the
+        choice is more likely to fall within
+        larger regions.
+        """
         if len(self) == 0:
             raise IndexError('no files')
         values, weights = zip(*self)
@@ -59,7 +70,8 @@ class WFileList(list):
         return values[i]
 
     def __repr__(self):
-        return ''
+        return 'List of files and their corresponding weights that elects files to stream, \
+        taking their weight into account.'
 
 
 def increment_ip(ip: str) -> str:
@@ -88,10 +100,10 @@ def ingest_ts(pcr_pid: int, ts_file: str):
     return
 
 
-def build_execution_string(cip: str, cport: int, bip: str=None, bport: int=None) -> str:
+def build_execution_string(file_choice: str, cip: str, cport: int, bip: str=None, bport: int=None) -> str:
     flags = " ".join(parser.flags)
     execution_string = 'multicat {flags} {fl} '.format(
-        flags=flags, fl=parser.file) + '{cip}:{cport}'.format(cip=cip, cport=str(cport))
+        flags=flags, fl=file_choice) + '{cip}:{cport}'.format(cip=cip, cport=str(cport))
     additions = {
         parser.bip: '@{bip}'.format(bip=bip),
         parser.bport: ':{bport}'.format(bport=str(bport)),
@@ -104,11 +116,11 @@ def build_execution_string(cip: str, cport: int, bip: str=None, bport: int=None)
     return execution_string
 
 
-def build_execution_args(cip: str, cport: int, bip: str=None, bport: int=None) -> list:
+def build_execution_args(file_choice: str, cip: str, cport: int, bip: str=None, bport: int=None) -> list:
     execution_args = ['multicat']
     for flag in parser.flags:
         execution_args.append(flag)
-    execution_args.append(parser.file)
+    execution_args.append(file_choice)
     execution_args.append('{cip}:{cport}'.format(cip=cip, cport=str(cport)))
     additions = {
         parser.bip: '@{bip}'.format(bip=bip),
@@ -144,17 +156,18 @@ def multicat_thread(multicat_values: list):
         print(output_str)
         # <connect address>:<connect port>@<bind address>:<bind port>/<options>
         print('Running multicat:\n\n\t' +
-              build_execution_string(cip, cport, bip=bip, bport=bport))
+              build_execution_string(ts_file, cip, cport, bip=bip, bport=bport))
 
         # run multicat, either in loop or not
         if parser.loop:
             while True:
                 Popen(build_execution_args(
-                    cip, cport, bip=bip, bport=bport))
+                    ts_file, cip, cport, bip=bip, bport=bport))
         else:
-            Popen(build_execution_args(cip, cport, bip=bip, bport=bport))
+            Popen(build_execution_args(ts_file, cip, cport, bip=bip, bport=bport))
 
     except Exception as e:
+        print('error')
         print(str(e))
 
 
@@ -200,8 +213,6 @@ def main():
                                                                                 'm', 'R', 'w', ])
 
     parser = parser.parse_args()
-
-    signal.signal(signal.SIGINT, signal_handler)
 
     ###### Start Manifest file processing #########
 

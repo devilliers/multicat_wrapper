@@ -13,18 +13,6 @@ from csv import reader
 from collections import Counter
 from subprocess import Popen
 
-# PY2 = sys.version[0] == '2'
-# PY3_4 = sys.version[:3] == '3.4'
-# PY3_6 = sys.version[:3] == '3.6'
-
-
-# def signal_handler(signal, frame):
-#     global interrupted
-#     interrupted = True
-
-
-# signal.signal(signal.SIGINT, signal_handler)
-
 
 def multiple_file_types(*patterns):
     return it.chain.from_iterable(glob.iglob(pattern) for pattern in patterns)
@@ -157,18 +145,15 @@ def multicat_thread(multicat_values: list):
         # <connect address>:<connect port>@<bind address>:<bind port>/<options>
         print('Running multicat:\n\n\t' +
               build_execution_string(cip, cport, bip=bip, bport=bport))
+
+        # run multicat, either in loop or not
         if parser.loop:
-            # interrupted = False
             while True:
                 Popen(build_execution_args(
                     cip, cport, bip=bip, bport=bport))
-                # supposedly a fix to not being able to CTRL+C
-                # to exit, but doesn't seem to work...
-                # if interrupted:
-                #     print("Killing loop.")
-                #     break
         else:
             Popen(build_execution_args(cip, cport, bip=bip, bport=bport))
+
     except Exception as e:
         print(str(e))
 

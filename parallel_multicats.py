@@ -240,10 +240,10 @@ def main():
             parser.flags.append(flags_to_add_to_multicat[flag])
 
     # pass any flag variables through to multicat flags that use them
-    file_choice = weighted_files.elect() if parser.manifest else parser.file
+    # file_choice = weighted_files.elect() if parser.manifest else parser.file
     mc_flag_additions = {
         # TODO: this is wrong - need to have an xml output for each ts file, not the manifest
-        '-T': '-T {xml_output}'.format(xml_output=file_choice.replace(".ts", ".xml")),
+        # '-T': '-T {xml_output}'.format(xml_output=file_choice.replace(".ts", ".xml")),
         '-t': '-t {ttl}'.format(ttl=parser.ttl),
         '-u': '-u {rtp}'.format(rtp=parser.RTP),
     }
@@ -254,6 +254,7 @@ def main():
                 parser.flags[i] = v
 
     ###### End of Multicat flag processing #########
+
     global TOTAL_THREADS, CONNECT_PORT, BIND_PORT
     # used in outputting info
     CONNECT_IP = parser.ip
@@ -284,7 +285,7 @@ def main():
             parser.threads -= 1
             thread_no = TOTAL_THREADS
 
-    if TOTAL_THREADS > 1:
+    if TOTAL_THREADS > 1 and parser.manifest:
         print('\n\nDistribution of file choices:\n')
         for k, v in weighted_files.choices.items():
             print('\t', k, 'was selected', v, 'times\n')

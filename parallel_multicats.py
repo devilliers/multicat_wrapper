@@ -85,10 +85,10 @@ def read_manifest(manifest_file: str):
     #   - (filename, weight), not (weight, filename) --> or, could sort each row when adding, by sorted(item, key=lambda item: type==str) or something like that -
     # https://stackoverflow.com/questions/34756863/python-sort-different-types-in-list good place to start
     # also https://www.peterbe.com/plog/in-python-you-sort-with-a-tuple
-    if not mf.endswith('.csv'):
+    if not manifest_file.endswith('.csv'):
         raise FileNotFoundError('manifest file must be in CSV format')
     weighted_files = WFileList()
-    with open(mf, 'r') as csvfile:
+    with open(manifest_file, 'r') as csvfile:
         for row in reader(csvfile):
             weighted_files.append(tuple(row))
         csvfile.close()

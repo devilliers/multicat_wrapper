@@ -215,10 +215,14 @@ def main():
         '--bport', help='Starting bind port number.', type=int)
     parser.add_argument(
         '--ms', help='Milliseconds to stagger launching each instance of multicat by.', type=int, default=500)
-    parser.add_argument('--incr_ip', action='store_true',
+    parser.add_argument('--incr_con_ip', action='store_true',
                         help='Set last number in connect IPv4 address to increment with each thread spawned.')
-    parser.add_argument('--incr_port', action='store_true',
+    parser.add_argument('--incr_con_port', action='store_true',
                         help='Set connect port to increment with each thread spawned.')
+    parser.add_argument('--incr_bind_ip', action='store_true',
+                        help='Set last number in bind IPv4 address to increment with each thread spawned.')
+    parser.add_argument('--incr_bind_port', action='store_true',
+                        help='Set bind port to increment with each thread spawned.')
     parser.add_argument('--loop', '-l', action='store_true')
     parser.add_argument('--RTP', type=str)
     parser.add_argument('--ttl', type=int)
@@ -294,10 +298,14 @@ def main():
             futures.append(pool.submit(multicat_thread, [
                 thread_no, file_choice, parser.pid, parser.ms, parser.flags,
                 CONNECT_IP, CONNECT_PORT, BIND_IP, BIND_PORT]))
-            if parser.incr_port:
+            if parser.incr_con_port:
                 CONNECT_PORT += 1
-            if parser.incr_ip:
+            if parser.incr_con_ip:
                 CONNECT_IP = increment_ip(CONNECT_IP)
+            if parser.incr_bind_port:
+                BIND_PORT += 1
+            if parser.incr_bind_ip:
+                BIND_IP = increment_ip(BIND_IP)
             parser.threads -= 1
             thread_no = TOTAL_THREADS
 
